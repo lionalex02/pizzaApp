@@ -1,40 +1,40 @@
 package com.example.pizzaapp.ui
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import com.example.pizzaapp.domain.model.PizzaRecipe
+import com.example.pizzaapp.ui.PizzaThumbnail
 import com.example.pizzaapp.ui.theme.*
 
 @Composable
 fun HomeScreen(
-    onCreateClick: () -> Unit,
-    onPizzaClick: () -> Unit
+    pizzas: List<PizzaRecipe>,
+    onNewPizza: () -> Unit,
+    onOpenDetails: (PizzaRecipe) -> Unit
 ) {
     Scaffold(
         containerColor = PastelBackground,
         floatingActionButton = {
             FloatingActionButton(
-                onClick = onCreateClick,
+                onClick = onNewPizza,
                 containerColor = PizzaRed,
                 contentColor = Color.White,
                 shape = CircleShape,
                 modifier = Modifier.size(70.dp)
             ) {
-                Icon(Icons.Default.Add, contentDescription = "Create", modifier = Modifier.size(32.dp))
+                Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(36.dp))
             }
         }
     ) { padding ->
@@ -42,25 +42,27 @@ fun HomeScreen(
             modifier = Modifier
                 .padding(padding)
                 .fillMaxSize()
-                .padding(16.dp)
         ) {
             Text(
                 text = "Мои Пиццы",
-                style = MaterialTheme.typography.headlineLarge,
-                fontWeight = FontWeight.Bold,
-                color = TextBlack
+                style = MaterialTheme.typography.displaySmall,
+                fontWeight = FontWeight.Black,
+                color = TextBlack,
+                modifier = Modifier.padding(24.dp)
             )
 
-            Spacer(Modifier.height(24.dp))
-
-            LazyColumn(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                items(3) { index ->
-                    SavedPizzaCard(
-                        name = "Пицца №${index + 1}",
-                        cals = 1200 + (index * 100),
-                        weight = 450 + (index * 50),
-                        onClick = onPizzaClick
-                    )
+            if (pizzas.isEmpty()) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text("Нет сохраненных пицц", color = TextGray)
+                }
+            } else {
+                LazyColumn(
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    items(pizzas) { pizza ->
+                        PizzaCard(pizza = pizza, onClick = { onOpenDetails(pizza) })
+                    }
                 }
             }
         }
@@ -68,34 +70,55 @@ fun HomeScreen(
 }
 
 @Composable
-fun SavedPizzaCard(name: String, cals: Int, weight: Int, onClick: () -> Unit) {
+fun PizzaCard(pizza: PizzaRecipe, onClick: () -> Unit) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .height(100.dp)
+            .height(140.dp)
             .clickable { onClick() },
         colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(4.dp)
+        elevation = CardDefaults.cardElevation(4.dp),
+        shape = androidx.compose.foundation.shape.RoundedCornerShape(20.dp)
     ) {
         Row(
             modifier = Modifier.fillMaxSize().padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-
             Box(
                 modifier = Modifier
-                    .size(80.dp)
-                    .clip(CircleShape)
-                    .background(HighlightYellow) // Желтый фон вместо картинки пока
-            )
+                    .weight(0.4f)
+                    .fillMaxHeight()
+            ) {
+                PizzaThumbnail(
+                    layers = pizza.ingredients,
+                    modifier = Modifier.align(Alignment.Center)
+                )
+            }
 
-            Spacer(Modifier.width(16.dp))
-
-            Column {
-                Text(name, fontWeight = FontWeight.Bold, fontSize = 18.sp)
-                Spacer(Modifier.height(4.dp))
-                Text("Вес: ~$weight г", color = TextGray, fontSize = 14.sp)
-                Text("$cals ккал", color = PizzaRed, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+            Column(
+                modifier = Modifier
+                    .weight(0.6f)
+                    .padding(start = 16.dp),
+                verticalArrangement = Arrangement.Center
+            ) {
+                Text(
+                    text = pizza.name,
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = TextBlack
+                )
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    text = "~${pizza.totalWeight} г",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = TextGray
+                )
+                Text(
+                    text = "${pizza.totalCalories} ккал",
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = PizzaRed
+                )
             }
         }
     }

@@ -13,6 +13,8 @@ import kotlinx.coroutines.launch
 
 
 data class ConstructorState(
+    val id: String? = null,
+    val name: String = "",
     val currentStage: Category = Category.BASE,
     val ingredients: List<Ingredient> = emptyList(),
     val filteredIngredients: List<Ingredient> = emptyList(),
@@ -31,6 +33,25 @@ class PizzaViewModel(
 
     init {
         loadIngredients()
+    }
+
+    fun resetState() {
+        _uiState.value = ConstructorState(
+            id = null,
+            name = "",
+            ingredients = _uiState.value.ingredients,
+            filteredIngredients = _uiState.value.ingredients.filter { it.category == Category.BASE }
+        )
+    }
+
+    fun loadRecipe(recipe: com.example.pizzaapp.domain.model.PizzaRecipe) {
+        _uiState.value = _uiState.value.copy(
+            id = recipe.id,
+            name = recipe.name,
+            addedLayers = recipe.ingredients,
+            totalCalories = recipe.totalCalories,
+            totalWeight = recipe.totalWeight
+        )
     }
 
     private fun loadIngredients() {

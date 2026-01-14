@@ -25,7 +25,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
@@ -45,9 +44,66 @@ import org.koin.androidx.compose.koinViewModel
 fun PizzaScreen(
     viewModel: PizzaViewModel = koinViewModel(),
     onCancel: () -> Unit,
-    onSave: () -> Unit
+    onSave: (String) -> Unit
 ) {
     val state by viewModel.uiState.collectAsState()
+    var showExitDialog by remember { mutableStateOf(false) }
+    var showSaveDialog by remember { mutableStateOf(false) }
+    var pizzaNameInput by remember { mutableStateOf(state.name) }
+
+    if (showExitDialog) {
+        AlertDialog(
+            onDismissRequest = { showExitDialog = false },
+            title = { Text("Выход") },
+            text = { Text("Несохраненные изменения будут потеряны.") },
+            confirmButton = {
+                TextButton(onClick = { showExitDialog = false; onCancel() }) {
+                    Text("Выйти", color = PizzaRed)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showExitDialog = false }) { Text("Отмена", color = TextBlack) }
+            },
+            containerColor = Color.White
+        )
+    }
+
+    if (showSaveDialog) {
+        AlertDialog(
+            onDismissRequest = { showSaveDialog = false },
+            title = { Text("Сохранение пиццы") },
+            text = {
+                Column {
+                    Text("Введите название:")
+                    Spacer(Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = pizzaNameInput,
+                        onValueChange = { pizzaNameInput = it },
+                        singleLine = true,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = PizzaRed,
+                            cursorColor = PizzaRed
+                        )
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showSaveDialog = false
+                        onSave(pizzaNameInput.ifBlank { "Пицца без названия" })
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = PizzaRed)
+                ) {
+                    Text("Сохранить")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showSaveDialog = false }) { Text("Отмена", color = TextBlack) }
+            },
+            containerColor = Color.White
+        )
+    }
 
     Column(
         modifier = Modifier
@@ -55,7 +111,13 @@ fun PizzaScreen(
             .background(PastelBackground)
             .windowInsetsPadding(WindowInsets.statusBars)
     ) {
-        TopActionHeader(onCancel, onSave)
+        TopActionHeader(
+            onCancel = { showExitDialog = true },
+            onSave = {
+                pizzaNameInput = state.name.ifBlank { "" }
+                showSaveDialog = true
+            }
+        )
         StagesSelector(
             currentStage = state.currentStage,
             onStageSelect = { viewModel.onStageSelected(it) }
@@ -66,7 +128,6 @@ fun PizzaScreen(
                 .weight(1f)
                 .fillMaxWidth()
         ) {
-
             Column(
                 modifier = Modifier
                     .weight(0.6f)
@@ -74,12 +135,10 @@ fun PizzaScreen(
                     .padding(horizontal = 8.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Spacer(Modifier.height(30.dp))
-
                 SelectedProductTopPanel(
                     selectedItemName = state.selectedIngredientId,
-                    onMinusClick = { /* TODO */ },
-                    onPlusClick = { /* TODO */ }
+                    onMinusClick = { },
+                    onPlusClick = { }
                 )
 
                 Box(
@@ -93,27 +152,25 @@ fun PizzaScreen(
                         selectedId = state.selectedIngredientId,
                         modifier = Modifier.fillMaxWidth(0.95f)
                     )
-
-                    val currentIndex = state.addedLayers.indexOfFirst { it.name == state.selectedIngredientId }
-                    LayerNavigationArrows(
-                        modifier = Modifier
-                            .align(Alignment.BottomCenter)
-                            .padding(bottom = 8.dp),
-                        currentLayerIndex = currentIndex,
-                        totalLayers = state.addedLayers.size,
-                        canGoPrev = currentIndex > 0,
-                        canGoNext = currentIndex != -1 && currentIndex < state.addedLayers.lastIndex,
-                        onPrev = { viewModel.onSelectPrevLayer() },
-                        onNext = { viewModel.onSelectNextLayer() }
-                    )
                 }
+
+                val currentIndex = state.addedLayers.indexOfFirst { it.name == state.selectedIngredientId }
+                LayerNavigationArrows(
+                    modifier = Modifier.padding(vertical = 8.dp),
+                    currentLayerIndex = currentIndex,
+                    totalLayers = state.addedLayers.size,
+                    canGoPrev = true,
+                    canGoNext = true,
+                    onPrev = { viewModel.onSelectPrevLayer() },
+                    onNext = { viewModel.onSelectNextLayer() }
+                )
 
                 TotalStatsBlock(
                     totalWeight = state.totalWeight,
                     totalCalories = state.totalCalories
                 )
 
-                Spacer(Modifier.height(60.dp))
+                Spacer(Modifier.height(100.dp))
             }
 
             IngredientsColumn(
@@ -140,14 +197,15 @@ fun SelectedProductTopPanel(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(top = 16.dp, bottom = 16.dp),
+            .height(100.dp)
+            .padding(top = 16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
         if (selectedItemName != null) {
             Text(
                 text = selectedItemName.uppercase(),
-                style = MaterialTheme.typography.titleLarge,
+                style = MaterialTheme.typography.headlineMedium,
                 fontWeight = FontWeight.Black,
                 color = PizzaRed,
                 textAlign = TextAlign.Center,
@@ -160,24 +218,29 @@ fun SelectedProductTopPanel(
 
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.padding(top = 4.dp)
+                modifier = Modifier.padding(top = 8.dp)
             ) {
-                IconButton(onClick = onMinusClick, modifier = Modifier.size(28.dp)) {
-                    Text("-", fontSize = 25.sp, fontWeight = FontWeight.Bold, color = TextBlack)
+                IconButton(onClick = onMinusClick, modifier = Modifier.size(32.dp)) {
+                    Text("-", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = TextBlack)
                 }
                 Text(
                     text = "100 г",
-                    fontSize = 16.sp,
-                    style = MaterialTheme.typography.bodyLarge,
+                    fontSize = 18.sp,
                     fontWeight = FontWeight.Bold,
+                    color = TextBlack,
                     modifier = Modifier.padding(horizontal = 16.dp)
                 )
-                IconButton(onClick = onPlusClick, modifier = Modifier.size(28.dp)) {
-                    Text("+", fontSize = 25.sp, fontWeight = FontWeight.Bold, color = TextBlack)
+                IconButton(onClick = onPlusClick, modifier = Modifier.size(32.dp)) {
+                    Text("+", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = TextBlack)
                 }
             }
         } else {
-            Spacer(Modifier.height(60.dp))
+            Text(
+                text = "ВЫБЕРИТЕ ПРОДУКТ",
+                style = MaterialTheme.typography.titleMedium,
+                color = Color.LightGray,
+                fontWeight = FontWeight.Bold
+            )
         }
     }
 }
@@ -203,16 +266,21 @@ fun TotalStatsBlock(totalWeight: Int, totalCalories: Int) {
     }
 }
 
-
 @Composable
 fun TopActionHeader(onCancel: () -> Unit, onSave: () -> Unit) {
     Row(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
         TextButton(onClick = onCancel) { Text("Отменить", color = TextGray) }
-        Button(onClick = onSave, colors = ButtonDefaults.buttonColors(containerColor = PizzaRed), shape = RoundedCornerShape(8.dp)) {
+        Button(
+            onClick = onSave,
+            colors = ButtonDefaults.buttonColors(containerColor = PizzaRed),
+            shape = RoundedCornerShape(8.dp)
+        ) {
             Text("Сохранить", color = Color.White, fontWeight = FontWeight.Bold)
         }
     }
@@ -221,10 +289,13 @@ fun TopActionHeader(onCancel: () -> Unit, onSave: () -> Unit) {
 @Composable
 fun StagesSelector(currentStage: Category, onStageSelect: (Category) -> Unit) {
     Row(
-        modifier = Modifier.fillMaxWidth().height(50.dp).background(Color.White),
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(50.dp)
+            .background(Color.White),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Icon(Icons.Default.KeyboardArrowLeft, null, tint = TextGray, modifier = Modifier.padding(start=8.dp))
+        Icon(Icons.Default.KeyboardArrowLeft, null, tint = TextGray, modifier = Modifier.padding(start = 8.dp))
         LazyRow(
             modifier = Modifier.weight(1f),
             horizontalArrangement = Arrangement.spacedBy(16.dp),
@@ -237,11 +308,13 @@ fun StagesSelector(currentStage: Category, onStageSelect: (Category) -> Unit) {
                     text = category.name,
                     color = if (isSelected) TextBlack else TextGray,
                     fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                    modifier = Modifier.clickable { onStageSelect(category) }.padding(8.dp)
+                    modifier = Modifier
+                        .clickable { onStageSelect(category) }
+                        .padding(8.dp)
                 )
             }
         }
-        Icon(Icons.Default.KeyboardArrowRight, null, tint = TextGray, modifier = Modifier.padding(end=8.dp))
+        Icon(Icons.Default.KeyboardArrowRight, null, tint = TextGray, modifier = Modifier.padding(end = 8.dp))
     }
 }
 
@@ -249,8 +322,15 @@ fun StagesSelector(currentStage: Category, onStageSelect: (Category) -> Unit) {
 fun PizzaLayout(layers: List<Ingredient>, selectedId: String?, modifier: Modifier = Modifier) {
     Box(modifier = modifier.aspectRatio(1f)) {
         if (layers.isEmpty()) Text("Пусто", Modifier.align(Alignment.Center), color = TextGray)
+
         val selectedIndex = layers.indexOfFirst { it.name == selectedId }
-        val visibleLayers = if (selectedId == null || selectedIndex == -1) layers else layers.take(selectedIndex + 1)
+
+        val visibleLayers = if (selectedId == null || selectedIndex == -1) {
+            layers
+        } else {
+            layers.take(selectedIndex + 1)
+        }
+
         visibleLayers.forEach { FallingIngredient(it) }
     }
 }
@@ -263,7 +343,9 @@ fun FallingIngredient(ingredient: Ingredient) {
         visible = visible,
         enter = slideInVertically(initialOffsetY = { -it }) + fadeIn(),
         exit = fadeOut(),
-        modifier = Modifier.zIndex(ingredient.zIndex).fillMaxSize()
+        modifier = Modifier
+            .zIndex(ingredient.zIndex)
+            .fillMaxSize()
     ) {
         Image(
             painter = painterResource(PizzaResources.getIngredientImage(ingredient.name)),
@@ -275,17 +357,29 @@ fun FallingIngredient(ingredient: Ingredient) {
 }
 
 @Composable
-fun LayerNavigationArrows(modifier: Modifier, currentLayerIndex: Int, totalLayers: Int, canGoPrev: Boolean, canGoNext: Boolean, onPrev: () -> Unit, onNext: () -> Unit) {
+fun LayerNavigationArrows(
+    modifier: Modifier,
+    currentLayerIndex: Int,
+    totalLayers: Int,
+    canGoPrev: Boolean,
+    canGoNext: Boolean,
+    onPrev: () -> Unit,
+    onNext: () -> Unit
+) {
     val text = if (totalLayers > 0 && currentLayerIndex >= 0) "Слой ${currentLayerIndex + 1}/$totalLayers" else "Слои"
-    val prevColor = if (canGoPrev) PizzaRed else Color.LightGray
-    val nextColor = if (canGoNext) PizzaRed else Color.LightGray
     Row(
-        modifier = modifier.background(Color.White, RoundedCornerShape(20.dp)).border(1.dp, Color.LightGray, RoundedCornerShape(20.dp)),
+        modifier = modifier
+            .background(Color.White, RoundedCornerShape(20.dp))
+            .border(1.dp, Color.LightGray, RoundedCornerShape(20.dp)),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        IconButton(onClick = onPrev, enabled = canGoPrev, modifier = Modifier.size(32.dp)) { Icon(Icons.Default.KeyboardArrowLeft, null, tint = prevColor) }
+        IconButton(onClick = onPrev, enabled = canGoPrev, modifier = Modifier.size(32.dp)) {
+            Icon(Icons.Default.KeyboardArrowLeft, null, tint = if(canGoPrev) PizzaRed else Color.LightGray)
+        }
         Text(text, fontSize = 12.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 8.dp))
-        IconButton(onClick = onNext, enabled = canGoNext, modifier = Modifier.size(32.dp)) { Icon(Icons.Default.KeyboardArrowRight, null, tint = nextColor) }
+        IconButton(onClick = onNext, enabled = canGoNext, modifier = Modifier.size(32.dp)) {
+            Icon(Icons.Default.KeyboardArrowRight, null, tint = if(canGoNext) PizzaRed else Color.LightGray)
+        }
     }
 }
 
@@ -336,12 +430,17 @@ fun IngredientCard(
         else -> Color.White
     }
     Card(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 6.dp, vertical = 4.dp).height(110.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 6.dp, vertical = 4.dp)
+            .height(110.dp),
         colors = CardDefaults.cardColors(containerColor = bgColor),
         elevation = CardDefaults.cardElevation(2.dp)
     ) {
         Row(
-            modifier = Modifier.fillMaxSize().padding(6.dp),
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(6.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(
@@ -353,7 +452,9 @@ fun IngredientCard(
                     painter = painterResource(id = PizzaResources.getIngredientImage(ingredient.name)),
                     contentDescription = null,
                     contentScale = ContentScale.Fit,
-                    modifier = Modifier.size(50.dp).background(Color.Transparent)
+                    modifier = Modifier
+                        .size(50.dp)
+                        .background(Color.Transparent)
                 )
                 Spacer(Modifier.height(4.dp))
                 Text(
@@ -372,16 +473,37 @@ fun IngredientCard(
                     fontSize = 10.sp
                 )
             }
-            Box(modifier = Modifier.width(1.dp).fillMaxHeight(0.8f).background(Color.LightGray.copy(alpha=0.5f)))
+            Box(
+                modifier = Modifier
+                    .width(1.dp)
+                    .fillMaxHeight(0.8f)
+                    .background(Color.LightGray.copy(alpha = 0.5f))
+            )
             Column(
-                modifier = Modifier.width(32.dp).fillMaxHeight(),
+                modifier = Modifier
+                    .width(32.dp)
+                    .fillMaxHeight(),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center
             ) {
                 if (isAdded) {
-                    Icon(imageVector = Icons.Default.Close, contentDescription = "Remove", tint = PizzaRedDark, modifier = Modifier.size(24.dp).clickable { onRemove() })
+                    Icon(
+                        imageVector = Icons.Default.Close,
+                        contentDescription = "Remove",
+                        tint = PizzaRedDark,
+                        modifier = Modifier
+                            .size(24.dp)
+                            .clickable { onRemove() }
+                    )
                 } else {
-                    Icon(imageVector = Icons.Default.Add, contentDescription = "Add", tint = ButtonBlack, modifier = Modifier.size(28.dp).clickable { onAdd() })
+                    Icon(
+                        imageVector = Icons.Default.Add,
+                        contentDescription = "Add",
+                        tint = ButtonBlack,
+                        modifier = Modifier
+                            .size(28.dp)
+                            .clickable { onAdd() }
+                    )
                 }
             }
         }
