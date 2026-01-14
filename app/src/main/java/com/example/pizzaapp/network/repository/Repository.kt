@@ -1,5 +1,6 @@
 package com.example.pizzaapp.network.repository
 
+import com.example.pizzaapp.BuildConfig
 import com.example.pizzaapp.domain.model.Category
 import com.example.pizzaapp.domain.model.Ingredient
 import com.example.pizzaapp.network.api.Api
@@ -11,11 +12,11 @@ import kotlinx.coroutines.flow.flow
 class Repository(
     private val api: Api
 ) {
-
-     suspend fun getCalories(name: String) :Int {
-        val id = api.searchFood(name, 1, "")
+    val apiKey = BuildConfig.API_KEY
+    suspend fun getCalories(name: String) :Int {
+        val id = api.searchFood(name, 1, apiKey)
             .foods.first().fdcId
-        val calories = api.getFoodDetails(id, "").foodNutrients.firstOrNull {
+        val calories = api.getFoodDetails(id, apiKey).foodNutrients.firstOrNull {
             it.nutrient.name == "Energy" && it.nutrient.unitName == "kcal"
         }?.amount?.toInt() ?: 0
         return calories

@@ -2,6 +2,7 @@ package com.example.pizzaapp.prezentation
 
 import android.util.Log
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.asLiveData
 import androidx.lifecycle.viewModelScope
 import com.example.pizzaapp.domain.model.Category
 import com.example.pizzaapp.domain.model.Ingredient
@@ -9,6 +10,8 @@ import com.example.pizzaapp.network.repository.Repository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.launch
 
 
@@ -152,6 +155,8 @@ class PizzaViewModel(
 
     // хардкод исправить TODO абоба
     private fun getFallbackIngredients(): List<Ingredient> {
+        val value = repository.getIngredients().asLiveData()
+
         return listOf(
             Ingredient("Neapolitan dough", 250, 0f, Category.BASE),
             Ingredient("Wheat dough", 260, 0f, Category.BASE),
