@@ -7,4 +7,5 @@ data class Ingredient(
     val caloriesPer100G : Int,
     val zIndex: Float,
     val category: Category,
+    val weightGrams: Int = 50
 )

@@ -92,10 +92,24 @@ class PizzaViewModel(
             currentLayers.removeAll { it.category == ingredient.category }
         }
 
-        currentLayers.add(ingredient)
+        currentLayers.add(ingredient.copy(weightGrams = 50))
         val sortedLayers = currentLayers.sortedBy { it.zIndex }
 
         recalculateAndEmit(sortedLayers, ingredient.name)
+    }
+    fun updateIngredientWeight(delta: Int) {
+        val selectedId = _uiState.value.selectedIngredientId ?: return
+        val currentLayers = _uiState.value.addedLayers.toMutableList()
+
+        val index = currentLayers.indexOfFirst { it.name == selectedId }
+        if (index != -1) {
+            val item = currentLayers[index]
+            val newWeight = (item.weightGrams + delta).coerceIn(50, 500000)
+
+            currentLayers[index] = item.copy(weightGrams = newWeight)
+
+            recalculateAndEmit(currentLayers, selectedId)
+        }
     }
 
     fun onRemoveIngredient(ingredient: Ingredient) {
@@ -106,13 +120,13 @@ class PizzaViewModel(
 
     //Подсчет калорий
     private fun recalculateAndEmit(layers: List<Ingredient>, selectedId: String?) {
-        val totalCals = layers.sumOf { it.caloriesPer100G }
-        val calculatedWeight = layers.size * 100
+        val totalWeight = layers.sumOf { it.weightGrams }
+        val totalCals = layers.sumOf { (it.caloriesPer100G * it.weightGrams) / 100 }
 
         _uiState.value = _uiState.value.copy(
             addedLayers = layers,
             totalCalories = totalCals,
-            totalWeight = calculatedWeight,
+            totalWeight = totalWeight,
             selectedIngredientId = selectedId
         )
     }

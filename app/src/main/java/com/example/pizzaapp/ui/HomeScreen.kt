@@ -7,6 +7,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -15,14 +16,14 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.pizzaapp.domain.model.PizzaRecipe
-import com.example.pizzaapp.ui.PizzaThumbnail
 import com.example.pizzaapp.ui.theme.*
 
 @Composable
 fun HomeScreen(
     pizzas: List<PizzaRecipe>,
     onNewPizza: () -> Unit,
-    onOpenDetails: (PizzaRecipe) -> Unit
+    onOpenDetails: (PizzaRecipe) -> Unit,
+    onDeletePizza: (PizzaRecipe) -> Unit
 ) {
     Scaffold(
         containerColor = PastelBackground,
@@ -61,7 +62,11 @@ fun HomeScreen(
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     items(pizzas) { pizza ->
-                        PizzaCard(pizza = pizza, onClick = { onOpenDetails(pizza) })
+                        PizzaCard(
+                            pizza = pizza,
+                            onClick = { onOpenDetails(pizza) },
+                            onDelete = { onDeletePizza(pizza) }
+                        )
                     }
                 }
             }
@@ -70,7 +75,11 @@ fun HomeScreen(
 }
 
 @Composable
-fun PizzaCard(pizza: PizzaRecipe, onClick: () -> Unit) {
+fun PizzaCard(
+    pizza: PizzaRecipe,
+    onClick: () -> Unit,
+    onDelete: () -> Unit
+) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -81,7 +90,9 @@ fun PizzaCard(pizza: PizzaRecipe, onClick: () -> Unit) {
         shape = androidx.compose.foundation.shape.RoundedCornerShape(20.dp)
     ) {
         Row(
-            modifier = Modifier.fillMaxSize().padding(12.dp),
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Box(
@@ -97,7 +108,7 @@ fun PizzaCard(pizza: PizzaRecipe, onClick: () -> Unit) {
 
             Column(
                 modifier = Modifier
-                    .weight(0.6f)
+                    .weight(0.5f)
                     .padding(start = 16.dp),
                 verticalArrangement = Arrangement.Center
             ) {
@@ -118,6 +129,17 @@ fun PizzaCard(pizza: PizzaRecipe, onClick: () -> Unit) {
                     style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.Bold,
                     color = PizzaRed
+                )
+            }
+
+            IconButton(
+                onClick = onDelete,
+                modifier = Modifier.weight(0.1f)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Delete,
+                    contentDescription = "Delete",
+                    tint = TextGray
                 )
             }
         }

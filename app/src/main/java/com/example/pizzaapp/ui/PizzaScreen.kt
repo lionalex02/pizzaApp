@@ -135,10 +135,15 @@ fun PizzaScreen(
                     .padding(horizontal = 8.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
+                val selectedIngredient = state.addedLayers.find { it.name == state.selectedIngredientId }
+
+                val currentWeight = selectedIngredient?.weightGrams ?: 100
+
                 SelectedProductTopPanel(
                     selectedItemName = state.selectedIngredientId,
-                    onMinusClick = { },
-                    onPlusClick = { }
+                    weight = currentWeight,
+                    onMinusClick = { viewModel.updateIngredientWeight(-50) },
+                    onPlusClick = { viewModel.updateIngredientWeight(50) }
                 )
 
                 Box(
@@ -191,6 +196,7 @@ fun PizzaScreen(
 @Composable
 fun SelectedProductTopPanel(
     selectedItemName: String?,
+    weight: Int,
     onMinusClick: () -> Unit,
     onPlusClick: () -> Unit
 ) {
@@ -224,7 +230,7 @@ fun SelectedProductTopPanel(
                     Text("-", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = TextBlack)
                 }
                 Text(
-                    text = "100 г",
+                    text = "$weight г",
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold,
                     color = TextBlack,

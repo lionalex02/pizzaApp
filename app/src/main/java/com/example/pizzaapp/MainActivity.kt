@@ -1,5 +1,6 @@
 package com.example.pizzaapp
 
+import android.content.Context
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -9,6 +10,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.remember
+import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
@@ -16,8 +18,9 @@ import com.example.pizzaapp.domain.model.PizzaRecipe
 import com.example.pizzaapp.ui.DetailsScreen
 import com.example.pizzaapp.ui.HomeScreen
 import com.example.pizzaapp.ui.PizzaScreen
-import com.example.pizzaapp.ui.Screen
 import com.example.pizzaapp.ui.theme.PizzaAppTheme
+import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
 import org.koin.androidx.compose.koinViewModel
 
 object MockStorage {
@@ -32,7 +35,14 @@ class MainActivity : ComponentActivity() {
         setContent {
             PizzaAppTheme {
                 val navController = rememberNavController()
-                val savedPizzas = remember { mutableStateListOf<PizzaRecipe>() }
+                val context = LocalContext.current
+
+                val savedPizzas = remember {
+                    mutableStateListOf<PizzaRecipe>().apply {
+                        addAll(loadPizzas(context))
+                    }
+                }
+
                 NavHost(
                     navController = navController,
                     startDestination = "home"
@@ -49,6 +59,10 @@ class MainActivity : ComponentActivity() {
                             onOpenDetails = { recipe ->
                                 MockStorage.selectedRecipe = recipe
                                 navController.navigate("details")
+                            },
+                            onDeletePizza = { recipe ->
+                                savedPizzas.remove(recipe)
+                                savePizzas(context, savedPizzas)
                             }
                         )
                     }
@@ -59,8 +73,9 @@ class MainActivity : ComponentActivity() {
                         val state by viewModel.uiState.collectAsState()
 
                         LaunchedEffect(Unit) {
-                            if (MockStorage.selectedRecipe != null) {
-                                viewModel.loadRecipe(MockStorage.selectedRecipe!!)
+                            val recipeToEdit = MockStorage.selectedRecipe
+                            if (recipeToEdit != null) {
+                                viewModel.loadRecipe(recipeToEdit)
                                 MockStorage.selectedRecipe = null
                             } else {
                                 viewModel.resetState()
@@ -91,6 +106,7 @@ class MainActivity : ComponentActivity() {
                                         savedPizzas.add(newRecipe)
                                     }
 
+                                    savePizzas(context, savedPizzas)
                                     navController.popBackStack("home", inclusive = false)
                                 }
                             }
@@ -99,8 +115,12 @@ class MainActivity : ComponentActivity() {
 
                     // ПОДРОБНЫЙ ПРОСМОТР
                     composable("details") {
+                        val recipe = requireNotNull(MockStorage.selectedRecipe) {
+                            "Попытка открыть экран деталей без выбранного рецепта (MockStorage.selectedRecipe is null)"
+                        }
+
                         DetailsScreen(
-                            recipe = MockStorage.selectedRecipe,
+                            recipe = recipe,
                             onBack = { navController.popBackStack() },
                             onEdit = {
                                 navController.navigate("constructor")
@@ -110,5 +130,20 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    private fun savePizzas(context: Context, pizzas: List<PizzaRecipe>) {
+        val json = Gson().toJson(pizzas)
+        context.getSharedPreferences("pizza_prefs", Context.MODE_PRIVATE)
+            .edit()
+            .putString("saved_pizzas", json)
+            .apply()
+    }
+
+    private fun loadPizzas(context: Context): List<PizzaRecipe> {
+        val json = context.getSharedPreferences("pizza_prefs", Context.MODE_PRIVATE)
+            .getString("saved_pizzas", null) ?: return emptyList()
+        val type = object : TypeToken<List<PizzaRecipe>>() {}.type
+        return Gson().fromJson(json, type)
     }
 }
