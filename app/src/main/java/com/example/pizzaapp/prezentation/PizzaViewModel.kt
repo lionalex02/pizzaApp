@@ -168,22 +168,22 @@ class PizzaViewModel(
     }
 
     // хардкод исправить TODO абоба
-    private fun getFallbackIngredients(): List<Ingredient> {
-        val value = repository.getIngredients().asLiveData()
+    private suspend fun getFallbackIngredients(): List<Ingredient> {
 
-        return listOf(
-            Ingredient("Neapolitan dough", 250, 0f, Category.BASE),
-            Ingredient("Wheat dough", 260, 0f, Category.BASE),
-            Ingredient("Tomato Sauce", 40, 10f, Category.SAUCE),
-            Ingredient("BBQ Sauce", 50, 10f, Category.SAUCE),
-            Ingredient("Mozzarella", 280, 20f, Category.CHEESE),
-            Ingredient("Parmesan", 300, 20f, Category.CHEESE),
-            Ingredient("Pepperoni", 450, 30f, Category.MEAT),
-            Ingredient("Bacon", 500, 30f, Category.MEAT),
-            Ingredient("Ham", 200, 30f, Category.MEAT),
-            Ingredient("Mushrooms", 20, 40f, Category.VEGGIES),
-            Ingredient("Tomatoes", 15, 40f, Category.VEGGIES),
-            Ingredient("Pineapple", 50, 50f, Category.EXTRA)
-        )
+        return repository.getIngredients().first()
+//        return listOf(
+//            Ingredient("Neapolitan dough", 250, 0f, Category.BASE),
+//            Ingredient("Wheat dough", 260, 0f, Category.BASE),
+//            Ingredient("Tomato Sauce", 40, 10f, Category.SAUCE),
+//            Ingredient("BBQ Sauce", 50, 10f, Category.SAUCE),
+//            Ingredient("Mozzarella", 280, 20f, Category.CHEESE),
+//            Ingredient("Parmesan", 300, 20f, Category.CHEESE),
+//            Ingredient("Pepperoni", 450, 30f, Category.MEAT),
+//            Ingredient("Bacon", 500, 30f, Category.MEAT),
+//            Ingredient("Ham", 200, 30f, Category.MEAT),
+//            Ingredient("Mushrooms", 20, 40f, Category.VEGGIES),
+//            Ingredient("Tomatoes", 15, 40f, Category.VEGGIES),
+//            Ingredient("Pineapple", 50, 50f, Category.EXTRA)
+//        )
     }
 }
