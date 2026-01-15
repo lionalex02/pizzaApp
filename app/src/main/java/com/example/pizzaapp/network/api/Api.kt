@@ -17,7 +17,8 @@ interface Api{
     suspend fun searchFood(
         @Query("query") query: String,
         @Query("pageSize") pageSize: Int = 1,
-        @Query("api_key") apiKey: String
+        @Query("api_key") apiKey: String,
+        @Query("dataType") dataType: List<String> = listOf("Foundation", "SR Legacy")
     ): FoodSearchResponse
 
     @GET("food/{fdcId}")

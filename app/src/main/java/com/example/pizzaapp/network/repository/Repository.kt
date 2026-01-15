@@ -40,14 +40,18 @@ class Repository(
             try {
                 delay(1000)
 
-                val response = api.searchFood(name, 1, apiKey)
+                val response = api.searchFood(name, 1, apiKey,  dataType = listOf("Foundation", "SR Legacy"))
                 if (response.foods.isEmpty()) return 0
 
-                val id = response.foods.first().fdcId
+                val provenFood = response.foods.firstOrNull {
+                    it.dataType == "SR Legacy" || it.dataType == "Foundation"
+                } ?: response.foods.first()
+                val id = provenFood.fdcId
                 val details = api.getFoodDetails(id, apiKey)
 
                 val cals = details.foodNutrients.firstOrNull {
-                    it.nutrient.name == "Energy" && (it.nutrient.unitName == "kcal" || it.nutrient.unitName == "KCAL")
+//                    it.nutrient.name == "Energy" && it.nutrient.unitName == "kcal"
+                    it.nutrient.name.contains("Energy", ignoreCase = true) && it.nutrient.unitName.equals("kcal", ignoreCase = true)
                 }?.amount?.toInt() ?: 0
 
                 if (cals > 0) {
@@ -117,7 +121,7 @@ class Repository(
             Ingredient("Томаты", tomatoesCal.await(), 5f, Category.VEGGIES),
             Ingredient("Маринованные огурцы", picklesCal.await(), 6f, Category.VEGGIES),
 
-            Ingredient("Кетчуп", ketchupCal.await(), 1f, Category.SAUCE),
+            Ingredient("Томатный соус", ketchupCal.await(), 1f, Category.SAUCE),
             Ingredient("Майонез", mayonnaiseCal.await(), 1f, Category.SAUCE),
             Ingredient("Соус Барбекю", barbecueCal.await(), 1f, Category.SAUCE),
 
