@@ -7,25 +7,46 @@ import com.example.pizzaapp.network.api.Api
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.async
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.flow
+import java.net.SocketTimeoutException
 
 class Repository(
     private val api: Api
 ) {
     val apiKey = BuildConfig.API_KEY
-    suspend fun getCalories(name: String) :Int {
-        val id = api.searchFood(name, 1, apiKey)
-            .foods.first().fdcId
-        val calories = api.getFoodDetails(id, apiKey).foodNutrients.firstOrNull {
-            it.nutrient.name == "Energy" && it.nutrient.unitName == "kcal"
-        }?.amount?.toInt() ?: 0
-        return calories
+//    suspend fun getCalories(name: String) :Int {
+//        val id = api.searchFood(name, 1, apiKey)
+//            .foods.first().fdcId
+//        val calories = api.getFoodDetails(id, apiKey).foodNutrients.firstOrNull {
+//            it.nutrient.name == "Energy" && it.nutrient.unitName == "kcal"
+//        }?.amount?.toInt() ?: 0
+//        return calories
+//    }
+    suspend fun getCalories(name: String): Int {
+        val food = api.searchFood(name, 1, apiKey)
+            .foods.firstOrNull() ?: return 0
 
+        return api.getFoodDetails(food.fdcId, apiKey)
+            .foodNutrients
+            .firstOrNull {
+                it.nutrient.name == "Energy" && it.nutrient.unitName == "kcal"
+            }
+            ?.amount
+            ?.toInt()
+            ?: 0
     }
 
-     fun getIngredients(): Flow<List<Ingredient>> {
+
+    fun getIngredients(): Flow<List<Ingredient>> {
         return flow {
             emit(loadIngredients())
+        }.catch { e ->
+            if (e is SocketTimeoutException) {
+                emit(fallbackIngredients())
+            } else {
+                throw e
+            }
         }
 
 
@@ -84,6 +105,37 @@ class Repository(
             Ingredient("Ананас", pineappleCal.await(), 7f, Category.EXTRA),
             Ingredient("Зелень", dillCal.await(), 10f, Category.EXTRA),
         )}
+    }
 
+    private fun fallbackIngredients(): List<Ingredient>{
+        return listOf(
+            Ingredient("Неаполитанское тесто", 0, 0f, Category.BASE),
+            Ingredient("Пшеничное тесто",0, 0f, Category.BASE),
+            Ingredient("Ржаное тесто", 0, 0f, Category.BASE),
+
+            Ingredient("Бекон", 0, 4f, Category.MEAT),
+            Ingredient("Ветчина", 0, 2f, Category.MEAT),
+            Ingredient("Куриное филе", 0, 3f, Category.MEAT),
+            Ingredient("Колбаса пепперони", 0, 2f, Category.MEAT),
+            Ingredient("Салями", 0, 2f, Category.MEAT),
+
+            Ingredient("Шампиньоны", 0, 5f, Category.VEGGIES),
+            Ingredient("Оливки", 0, 8f, Category.VEGGIES),
+            Ingredient("Халапеньо", 0, 8f, Category.VEGGIES),
+            Ingredient("Томаты", 0, 5f, Category.VEGGIES),
+            Ingredient("Маринованные огурцы", 0, 6f, Category.VEGGIES),
+
+            Ingredient("Кетчуп", 0, 1f, Category.SAUCE),
+            Ingredient("Майонез", 0, 1f, Category.SAUCE),
+            Ingredient("Соус Барбекю", 0, 1f, Category.SAUCE),
+
+            Ingredient("Сыр Моцарелла", 0, 9f, Category.CHEESE),
+            Ingredient("Сыр Чеддер", 0, 9f, Category.CHEESE),
+            Ingredient("Сыр Гауда", 0, 9f, Category.CHEESE),
+            Ingredient("Сыр Пармезан", 0, 9f, Category.CHEESE),
+
+            Ingredient("Ананас", 0, 7f, Category.EXTRA),
+            Ingredient("Зелень", 0, 10f, Category.EXTRA),
+        )
     }
 }
