@@ -11,16 +11,10 @@ import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.lazy.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.KeyboardArrowLeft
-import androidx.compose.material.icons.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -29,13 +23,13 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.style.*
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import com.example.pizzaapp.domain.model.Category
 import com.example.pizzaapp.domain.model.Ingredient
+import com.example.pizzaapp.prezentation.ConstructorState
 import com.example.pizzaapp.prezentation.PizzaViewModel
 import com.example.pizzaapp.ui.theme.*
 import org.koin.androidx.compose.koinViewModel
@@ -47,9 +41,11 @@ fun PizzaScreen(
     onSave: (String) -> Unit
 ) {
     val state by viewModel.uiState.collectAsState()
+
     var showExitDialog by remember { mutableStateOf(false) }
     var showSaveDialog by remember { mutableStateOf(false) }
-    var pizzaNameInput by remember { mutableStateOf(state.name) }
+    var pizzaNameInput by remember { mutableStateOf("") }
+
 
     if (showExitDialog) {
         AlertDialog(
@@ -57,12 +53,17 @@ fun PizzaScreen(
             title = { Text("Выход") },
             text = { Text("Несохраненные изменения будут потеряны.") },
             confirmButton = {
-                TextButton(onClick = { showExitDialog = false; onCancel() }) {
-                    Text("Выйти", color = PizzaRed)
-                }
+                TextButton(
+                    onClick = {
+                        showExitDialog = false
+                        onCancel()
+                    }
+                ) { Text("Выйти", color = PizzaRed) }
             },
             dismissButton = {
-                TextButton(onClick = { showExitDialog = false }) { Text("Отмена", color = TextBlack) }
+                TextButton(onClick = { showExitDialog = false }) {
+                    Text("Отмена", color = TextBlack)
+                }
             },
             containerColor = Color.White
         )
@@ -94,62 +95,112 @@ fun PizzaScreen(
                         onSave(pizzaNameInput.ifBlank { "Пицца без названия" })
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = PizzaRed)
-                ) {
-                    Text("Сохранить")
-                }
+                ) { Text("Сохранить") }
             },
             dismissButton = {
-                TextButton(onClick = { showSaveDialog = false }) { Text("Отмена", color = TextBlack) }
+                TextButton(onClick = { showSaveDialog = false }) {
+                    Text("Отмена", color = TextBlack)
+                }
             },
             containerColor = Color.White
         )
     }
 
-    Column(
+
+    Box(
         modifier = Modifier
             .fillMaxSize()
             .background(PastelBackground)
             .windowInsetsPadding(WindowInsets.statusBars)
     ) {
-        TopActionHeader(
-            onCancel = { showExitDialog = true },
-            onSave = {
-                pizzaNameInput = state.name.ifBlank { "" }
-                showSaveDialog = true
+        when {
+            state.isLoading -> {
+                CircularProgressIndicator(
+                    modifier = Modifier.align(Alignment.Center),
+                    color = PizzaRed
+                )
             }
-        )
+
+            state.error != null -> {
+                Column(
+                    modifier = Modifier.align(Alignment.Center),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(state.error!!, color = PizzaRed)
+                    Spacer(Modifier.height(12.dp))
+                    Button(
+                        onClick = { viewModel.loadIngredients() },
+                        colors = ButtonDefaults.buttonColors(containerColor = PizzaRed)
+                    ) { Text("Повторить") }
+                }
+            }
+
+            else -> {
+                PizzaContent(
+                    state = state,
+                    onCancel = { showExitDialog = true },
+                    onSave = {
+                        pizzaNameInput = state.name
+                        showSaveDialog = true
+                    },
+                    onStageSelect = viewModel::onStageSelected,
+                    onAddIngredient = viewModel::onAddIngredient,
+                    onRemoveIngredient = viewModel::onRemoveIngredient,
+                    onPrevLayer = viewModel::onSelectPrevLayer,
+                    onNextLayer = viewModel::onSelectNextLayer,
+                    onWeightMinus = { viewModel.updateIngredientWeight(-50) },
+                    onWeightPlus = { viewModel.updateIngredientWeight(50) }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun PizzaContent(
+    state: ConstructorState,
+    onCancel: () -> Unit,
+    onSave: () -> Unit,
+    onStageSelect: (Category) -> Unit,
+    onAddIngredient: (Ingredient) -> Unit,
+    onRemoveIngredient: (Ingredient) -> Unit,
+    onPrevLayer: () -> Unit,
+    onNextLayer: () -> Unit,
+    onWeightMinus: () -> Unit,
+    onWeightPlus: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(PastelBackground)
+    ) {
+        TopActionHeader(onCancel, onSave)
+
         StagesSelector(
             currentStage = state.currentStage,
-            onStageSelect = { viewModel.onStageSelected(it) }
+            onStageSelect = onStageSelect
         )
 
-        Row(
-            modifier = Modifier
-                .weight(1f)
-                .fillMaxWidth()
-        ) {
+        Row(Modifier.weight(1f)) {
+
             Column(
                 modifier = Modifier
                     .weight(0.6f)
-                    .fillMaxHeight()
                     .padding(horizontal = 8.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                val selectedIngredient = state.addedLayers.find { it.name == state.selectedIngredientId }
-
-                val currentWeight = selectedIngredient?.weightGrams ?: 100
+                val selected = state.addedLayers.find { it.name == state.selectedIngredientId }
+                val weight = selected?.weightGrams ?: 100
 
                 SelectedProductTopPanel(
                     selectedItemName = state.selectedIngredientId,
-                    weight = currentWeight,
-                    onMinusClick = { viewModel.updateIngredientWeight(-50) },
-                    onPlusClick = { viewModel.updateIngredientWeight(50) }
+                    weight = weight,
+                    onMinusClick = onWeightMinus,
+                    onPlusClick = onWeightPlus
                 )
 
                 Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxWidth(),
+                    modifier = Modifier.weight(1f),
                     contentAlignment = Alignment.Center
                 ) {
                     PizzaLayout(
@@ -159,38 +210,34 @@ fun PizzaScreen(
                     )
                 }
 
-                val currentIndex = state.addedLayers.indexOfFirst { it.name == state.selectedIngredientId }
+                val index = state.addedLayers.indexOfFirst { it.name == state.selectedIngredientId }
                 LayerNavigationArrows(
                     modifier = Modifier.padding(vertical = 8.dp),
-                    currentLayerIndex = currentIndex,
+                    currentLayerIndex = index,
                     totalLayers = state.addedLayers.size,
                     canGoPrev = true,
                     canGoNext = true,
-                    onPrev = { viewModel.onSelectPrevLayer() },
-                    onNext = { viewModel.onSelectNextLayer() }
+                    onPrev = onPrevLayer,
+                    onNext = onNextLayer
                 )
 
-                TotalStatsBlock(
-                    totalWeight = state.totalWeight,
-                    totalCalories = state.totalCalories
-                )
-
+                TotalStatsBlock(state.totalWeight, state.totalCalories)
                 Spacer(Modifier.height(100.dp))
             }
 
             IngredientsColumn(
-                modifier = Modifier
-                    .weight(0.4f)
-                    .fillMaxHeight(),
+                modifier = Modifier.weight(0.4f),
                 ingredients = state.filteredIngredients,
                 addedLayers = state.addedLayers,
                 selectedId = state.selectedIngredientId,
-                onAdd = { viewModel.onAddIngredient(it) },
-                onRemove = { viewModel.onRemoveIngredient(it) }
+                onAdd = onAddIngredient,
+                onRemove = onRemoveIngredient
             )
         }
     }
 }
+
+
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable

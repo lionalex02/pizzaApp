@@ -16,6 +16,8 @@ import kotlinx.coroutines.launch
 
 
 data class ConstructorState(
+    val isLoading: Boolean = true,
+    val error: String? = null,
     val id: String? = null,
     val name: String = "",
     val currentStage: Category = Category.BASE,
@@ -57,18 +59,32 @@ class PizzaViewModel(
         )
     }
 
-    private fun loadIngredients() {
+    fun loadIngredients() {
         viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(
+                isLoading = true,
+                error = null
+            )
+
             try {
-                repository.getIngredients().collect { list ->
-                    updateIngredientsList(list)
-                }
+                val list = repository.getIngredients().first()
+
+                _uiState.value = _uiState.value.copy(
+                    ingredients = list,
+                    filteredIngredients = list.filter { it.category == Category.BASE },
+                    isLoading = false
+                )
             } catch (e: Exception) {
-                Log.e("PizzaViewModel", "Error loading data: ${e.message}. Using fallback.")
-                updateIngredientsList(getFallbackIngredients())
+                Log.e("PizzaViewModel", "Error loading data", e)
+
+                _uiState.value = _uiState.value.copy(
+                    isLoading = false,
+                    error = "Ошибка загрузки ингредиентов"
+                )
             }
         }
     }
+
 
     private fun updateIngredientsList(list: List<Ingredient>) {
         _uiState.value = _uiState.value.copy(
@@ -168,9 +184,9 @@ class PizzaViewModel(
     }
 
     // хардкод исправить TODO абоба
-    private suspend fun getFallbackIngredients(): List<Ingredient> {
-
-        return repository.getIngredients().first()
+//    private suspend fun getFallbackIngredients(): List<Ingredient> {
+//
+//        return repository.getIngredients().first()
 //        return listOf(
 //            Ingredient("Neapolitan dough", 250, 0f, Category.BASE),
 //            Ingredient("Wheat dough", 260, 0f, Category.BASE),
@@ -185,5 +201,5 @@ class PizzaViewModel(
 //            Ingredient("Tomatoes", 15, 40f, Category.VEGGIES),
 //            Ingredient("Pineapple", 50, 50f, Category.EXTRA)
 //        )
-    }
+    //}
 }
