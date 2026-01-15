@@ -1,6 +1,7 @@
 package com.example.pizzaapp.network.repository
 
 import com.example.pizzaapp.BuildConfig
+import com.example.pizzaapp.data.local.JsonCacheManager
 import com.example.pizzaapp.domain.model.Category
 import com.example.pizzaapp.domain.model.Ingredient
 import com.example.pizzaapp.network.api.Api
@@ -10,9 +11,13 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.flow
 import java.net.SocketTimeoutException
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
+import kotlinx.coroutines.delay
 
 class Repository(
-    private val api: Api
+    private val api: Api,
+    private val cacheManager: JsonCacheManager
 ) {
     val apiKey = BuildConfig.API_KEY
 //    suspend fun getCalories(name: String) :Int {
@@ -23,18 +28,37 @@ class Repository(
 //        }?.amount?.toInt() ?: 0
 //        return calories
 //    }
-    suspend fun getCalories(name: String): Int {
-        val food = api.searchFood(name, 1, apiKey)
-            .foods.firstOrNull() ?: return 0
+    private val semaphore = Semaphore(10)
 
-        return api.getFoodDetails(food.fdcId, apiKey)
-            .foodNutrients
-            .firstOrNull {
-                it.nutrient.name == "Energy" && it.nutrient.unitName == "kcal"
+
+    suspend fun getCalories(name: String): Int {
+        val cachedValue = cacheManager.getCalories(name)
+        if (cachedValue != null && cachedValue > 0) {
+            return cachedValue
+        }
+        return semaphore.withPermit {
+            try {
+                delay(1000)
+
+                val response = api.searchFood(name, 1, apiKey)
+                if (response.foods.isEmpty()) return 0
+
+                val id = response.foods.first().fdcId
+                val details = api.getFoodDetails(id, apiKey)
+
+                val cals = details.foodNutrients.firstOrNull {
+                    it.nutrient.name == "Energy" && (it.nutrient.unitName == "kcal" || it.nutrient.unitName == "KCAL")
+                }?.amount?.toInt() ?: 0
+
+                if (cals > 0) {
+                    cacheManager.saveCalories(name, cals)
+                }
+                return cals
+            } catch (e: Exception) {
+                e.printStackTrace()
+                return 0
             }
-            ?.amount
-            ?.toInt()
-            ?: 0
+        }
     }
 
 
