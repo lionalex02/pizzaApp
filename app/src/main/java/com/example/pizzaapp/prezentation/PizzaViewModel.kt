@@ -17,6 +17,7 @@ import kotlinx.coroutines.launch
 
 data class ConstructorState(
     val isLoading: Boolean = true,
+    val showError: Boolean = false,
     val error: String? = null,
     val id: String? = null,
     val name: String = "",
@@ -35,9 +36,21 @@ class PizzaViewModel(
 
     private val _uiState = MutableStateFlow(ConstructorState())
     val uiState: StateFlow<ConstructorState> = _uiState.asStateFlow()
-
+    var indexUPS =false
     init {
+        viewModelScope.launch {
+            repository.connectionError.collect { hasError ->
+                if (hasError && !indexUPS) {
+                    indexUPS = true
+                    _uiState.value = _uiState.value.copy(showError = true)
+                }
+            }
+        }
         loadIngredients()
+    }
+
+    fun hideErrorDialog() {
+        _uiState.value = _uiState.value.copy(showError = false)
     }
 
     fun resetState() {
@@ -61,9 +74,11 @@ class PizzaViewModel(
 
     fun loadIngredients() {
         viewModelScope.launch {
+            indexUPS = false
             _uiState.value = _uiState.value.copy(
                 isLoading = true,
-                error = null
+                error = null,
+                showError = false
             )
 
             try {
@@ -79,7 +94,8 @@ class PizzaViewModel(
 
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
-                    error = "Ошибка загрузки ингредиентов"
+                    showError = true,
+                    error = "Критическая ошибка загрузки"
                 )
             }
         }
@@ -137,11 +153,13 @@ class PizzaViewModel(
     //Подсчет калорий
     private fun recalculateAndEmit(layers: List<Ingredient>, selectedId: String?) {
         val totalWeight = layers.sumOf { it.weightGrams }
-        val totalCals = layers.sumOf { (it.caloriesPer100G * it.weightGrams) / 100 }
+        val totalPizzaCalories = layers.sumOf {
+            (it.caloriesPer100G.toDouble() * it.weightGrams) / 100
+        }
 
         _uiState.value = _uiState.value.copy(
             addedLayers = layers,
-            totalCalories = totalCals,
+            totalCalories = totalPizzaCalories.toInt(),
             totalWeight = totalWeight,
             selectedIngredientId = selectedId
         )

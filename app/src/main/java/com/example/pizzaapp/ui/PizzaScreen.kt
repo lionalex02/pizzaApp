@@ -47,6 +47,20 @@ fun PizzaScreen(
     var pizzaNameInput by remember { mutableStateOf("") }
 
 
+    if (state.showError) {
+        AlertDialog(
+            onDismissRequest = { viewModel.hideErrorDialog() },
+            title = { Text("Ошибка сети") },
+            text = { Text("Упс! Кажется, сервер ингредиентов не отвечает. Некоторые калории могут не отображаться.") },
+            confirmButton = {
+                TextButton(onClick = { viewModel.hideErrorDialog() }) {
+                    Text("Понятно", color = PizzaRed)
+                }
+            },
+            containerColor = Color.White,
+            shape = RoundedCornerShape(16.dp)
+        )
+    }
     if (showExitDialog) {
         AlertDialog(
             onDismissRequest = { showExitDialog = false },
@@ -182,19 +196,24 @@ fun PizzaContent(
         )
 
         Row(Modifier.weight(1f)) {
-
             Column(
                 modifier = Modifier
                     .weight(0.6f)
                     .padding(horizontal = 8.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                val selected = state.addedLayers.find { it.name == state.selectedIngredientId }
-                val weight = selected?.weightGrams ?: 100
+                val selectedIngredient = state.addedLayers.find { it.name == state.selectedIngredientId }
+                val currentItemCals = selectedIngredient?.let {
+                    ((it.caloriesPer100G.toDouble() * it.weightGrams) / 100).toInt()
+                } ?: 0
+
+                val weight = selectedIngredient?.weightGrams ?: 100
+
 
                 SelectedProductTopPanel(
                     selectedItemName = state.selectedIngredientId,
                     weight = weight,
+                    caloriesInPortion = currentItemCals,
                     onMinusClick = onWeightMinus,
                     onPlusClick = onWeightPlus
                 )
@@ -244,6 +263,7 @@ fun PizzaContent(
 fun SelectedProductTopPanel(
     selectedItemName: String?,
     weight: Int,
+    caloriesInPortion: Int,
     onMinusClick: () -> Unit,
     onPlusClick: () -> Unit
 ) {
@@ -276,13 +296,19 @@ fun SelectedProductTopPanel(
                 IconButton(onClick = onMinusClick, modifier = Modifier.size(32.dp)) {
                     Text("-", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = TextBlack)
                 }
-                Text(
-                    text = "$weight г",
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = TextBlack,
-                    modifier = Modifier.padding(horizontal = 16.dp)
-                )
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        text = "$weight г",
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = TextBlack
+                    )
+                    Text(
+                        text = "$caloriesInPortion ккал",
+                        fontSize = 12.sp,
+                        color = TextGray
+                    )
+                }
                 IconButton(onClick = onPlusClick, modifier = Modifier.size(32.dp)) {
                     Text("+", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = TextBlack)
                 }
@@ -308,8 +334,17 @@ fun TotalStatsBlock(totalWeight: Int, totalCalories: Int) {
             color = TextBlack
         )
 
-        val kcalPer100 = if (totalWeight > 0) (totalCalories.toDouble() / totalWeight * 100).toInt() else 0
-
+        val kcalPer100 = if (totalWeight > 0) {
+            ((totalCalories.toDouble() / totalWeight) * 100).toInt()
+        } else {
+            0
+        }
+        Text(
+            text = "Вся пицца: $totalCalories ккал",
+            style = MaterialTheme.typography.bodyMedium,
+            color = TextBlack,
+            modifier = Modifier.padding(top = 4.dp)
+        )
         Text(
             text = "ккал в 100 гр пиццы: $kcalPer100",
             style = MaterialTheme.typography.bodyMedium,
