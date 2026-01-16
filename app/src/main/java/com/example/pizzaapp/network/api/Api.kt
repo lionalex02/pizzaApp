@@ -18,7 +18,8 @@ interface Api{
         @Query("query") query: String,
         @Query("pageSize") pageSize: Int = 1,
         @Query("api_key") apiKey: String,
-        @Query("dataType") dataType: List<String> = listOf("Foundation", "SR Legacy", "Survey (FNDDS)")
+        @Query("dataType") dataType: List<String>? = null
+        //@Query("dataType") dataType: List<String> = listOf("Foundation", "SR Legacy", "Survey (FNDDS)")
     ): FoodSearchResponse
 
     @GET("food/{fdcId}")

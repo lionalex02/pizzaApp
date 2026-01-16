@@ -46,9 +46,9 @@ class Repository(
 
         return semaphore.withPermit {
             try {
-                delay(1000)
+                delay(kotlin.random.Random.nextLong(100, 500))
 
-                val response = api.searchFood(name, 5, apiKey,  dataType = listOf("Foundation", "SR Legacy", "Survey (FNDDS)"))
+                val response = api.searchFood(name, 5, apiKey, dataType = null)
                 if (response.foods.isEmpty()) return 0
 
                 val provenFood = response.foods.firstOrNull {
