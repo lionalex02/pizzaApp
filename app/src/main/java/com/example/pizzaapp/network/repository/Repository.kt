@@ -66,6 +66,13 @@ class Repository(
                     cacheManager.saveCalories(name, cals)
                 }
                 return cals
+            } catch (e: retrofit2.HttpException) {
+                 if (e.code() == 404 || e.code() == 400) {
+                    return 0
+                }
+                e.printStackTrace()
+                connectionError.emit(true)
+                return 0
             } catch (e: Exception) {
                 e.printStackTrace()
                 connectionError.emit(true)
