@@ -41,9 +41,9 @@ fun PizzaCanvas(
             Text("Pizza base is empty", Modifier.align(Alignment.Center))
         }
 
-        layers.forEach { ingredient ->
-            PizzaLayerItem(ingredient = ingredient)
-        }
+//        layers.forEach { ingredient ->
+//            PizzaLayerItem(ingredient = ingredient)
+//        }
     }
 }
 

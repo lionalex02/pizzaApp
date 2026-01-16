@@ -30,7 +30,7 @@ class Repository(
 //        }?.amount?.toInt() ?: 0
 //        return calories
 //    }
-    private val semaphore = Semaphore(10) //Количество процессов отправленных одновременно
+    private val semaphore = Semaphore(3) //Количество процессов отправленных одновременно
 
     val connectionError = MutableSharedFlow<Boolean>(
         replay = 1,
@@ -127,7 +127,7 @@ class Repository(
             Ingredient("Бекон", baconCal.await(), 4f, Category.MEAT),
             Ingredient("Ветчина", hamCal.await(), 2f, Category.MEAT),
             Ingredient("Куриное филе", chickenCal.await(), 3f, Category.MEAT),
-            Ingredient("Салями", salamiCal.await(), 2f, Category.MEAT),
+            Ingredient("Котенок", salamiCal.await(), 2f, Category.MEAT),
             Ingredient("Колбаса пепперони", pepperoniCal.await(), 2f, Category.MEAT),
 
             Ingredient("Шампиньоны", mushroomsCal.await(), 5f, Category.VEGGIES),
