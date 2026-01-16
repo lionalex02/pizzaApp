@@ -30,7 +30,7 @@ class Repository(
 //        }?.amount?.toInt() ?: 0
 //        return calories
 //    }
-    private val semaphore = Semaphore(30) //Количество процессов отправленных одновременно
+    private val semaphore = Semaphore(10) //Количество процессов отправленных одновременно
 
     val connectionError = MutableSharedFlow<Boolean>(
         replay = 1,
@@ -43,22 +43,23 @@ class Repository(
         if (cachedValue != null && cachedValue > 0) {
             return cachedValue
         }
+
         return semaphore.withPermit {
             try {
                 delay(1000)
 
-                val response = api.searchFood(name, 1, apiKey,  dataType = listOf("Foundation", "SR Legacy"))
+                val response = api.searchFood(name, 5, apiKey,  dataType = listOf("Foundation", "SR Legacy", "Survey (FNDDS)"))
                 if (response.foods.isEmpty()) return 0
 
                 val provenFood = response.foods.firstOrNull {
-                    it.dataType == "SR Legacy" || it.dataType == "Foundation"
+                    it.dataType == "SR Legacy" || it.dataType == "Foundation" || it.dataType == "Survey (FNDDS)"
                 } ?: response.foods.first()
                 val id = provenFood.fdcId
                 val details = api.getFoodDetails(id, apiKey)
 
                 val cals = details.foodNutrients.firstOrNull {
-                    it.nutrient.name == "Energy" && it.nutrient.unitName == "kcal"
-                    //it.nutrient.name.contains("Energy", ignoreCase = true) && it.nutrient.unitName.equals("kcal", ignoreCase = true)
+                   //it.nutrient.name == "Energy" && it.nutrient.unitName == "kcal"
+                    it.nutrient.name.contains("Energy", ignoreCase = true) && it.nutrient.unitName.equals("kcal", ignoreCase = true)
                 }?.amount?.toInt() ?: 0
 
                 if (cals > 0) {
@@ -112,7 +113,7 @@ class Repository(
 
                 //neapolitanCal.await()
         listOf(
-            Ingredient("Неаполитанское тесто", 100, 0f, Category.BASE),
+            Ingredient("Неаполитанское тесто", neapolitanCal.await(), 0f, Category.BASE),
             Ingredient("Пшеничное тесто",wheatCal.await(), 0f, Category.BASE),
             Ingredient("Ржаное тесто", ryeCal.await(), 0f, Category.BASE),
 
@@ -129,7 +130,7 @@ class Repository(
             Ingredient("Маринованные огурцы", picklesCal.await(), 6f, Category.VEGGIES),
 
             //ketchupCal.await()
-            Ingredient("Томатный соус", 600, 1f, Category.SAUCE),
+            Ingredient("Томатный соус", ketchupCal.await(), 1f, Category.SAUCE),
             Ingredient("Майонез", mayonnaiseCal.await(), 1f, Category.SAUCE),
             Ingredient("Соус Барбекю", barbecueCal.await(), 1f, Category.SAUCE),
 
